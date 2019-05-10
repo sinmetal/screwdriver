@@ -56,3 +56,18 @@ func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) {
 	fmt.Printf("QueryPlan: %+v\n", iter.QueryPlan)
 	fmt.Printf("QueryStats: %+v\n", iter.QueryStats)
 }
+
+func (s *SpannerService) PartitionedDML(ctx context.Context, sql string) (int64, error) {
+	defer func(n time.Time) {
+		d := time.Since(n)
+		fmt.Printf("PartitionedDML:Time: %v \n", d)
+	}(time.Now())
+
+	stmt := spanner.Statement{SQL: sql}
+	rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	return rowCount, nil
+}
