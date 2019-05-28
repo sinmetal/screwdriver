@@ -1,7 +1,11 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestGenerateUUIDPrefix(t *testing.T) {
-	GenerateUUIDPrefix()
+	l := GenerateUUIDPrefix()
+	fmt.Printf("%+v", l)
 }

@@ -22,9 +22,15 @@ func main() {
 
 	// sql := "DELETE From Tweet WHERE Author = 'dia'"
 	// sql := "UPDATE TweetHashKey SET Sort = 1 WHERE Mod(UNIX_SECONDS(CreatedAt), 100) = %d"
-	sql := "UPDATE TweetHashKey SET Sort = 1 WHERE Mod(UNIX_SECONDS(CreatedAt), 1000) = @Shard"
+	// sql := "UPDATE TweetHashKey SET Sort = 1 WHERE Mod(UNIX_SECONDS(CreatedAt), 1000) = @Shard"
+
+	sql := `UPDATE Tweet SET Sort = 1 WHERE STARTS_WITH(Id, "%s")`
 	//sql := "SELECT 1 as Count"
 	parallelPartitionedDML(ctx, ss, sql)
+
+	fmt.Println("----SIMPLE PARTITONED DML----")
+	sql = `UPDATE Tweet SET Sort = 2 WHERE Sort != 1`
+	partitionedDML(ctx, ss, sql)
 	fmt.Println(time.Now())
 	fmt.Println(sql)
 	//ss.ExactStalenessQuery(ctx, sql)
@@ -58,18 +64,18 @@ func partitionedDML(ctx context.Context, ss *SpannerService, sql string) {
 }
 
 func parallelPartitionedDML(ctx context.Context, ss *SpannerService, sql string) {
-	//prefix := GenerateUUIDPrefix()
+	prefix := GenerateUUIDPrefix()
 
-	var shards [1000]int
-	for i := 0; i < 1000; i++ {
-		shards[i] = i
-	}
-	rcs, errs := ss.ParallelPartitionedDML(ctx, sql, shards[:]) // TODO マルチエラーがいるのか・・・
+	//var shards [1000]int
+	//for i := 0; i < 1000; i++ {
+	//	shards[i] = i
+	//}
+	rcs, errs := ss.ParallelPartitionedDML(ctx, sql, prefix) // TODO マルチエラーがいるのか・・・
 	for i := 0; i < len(rcs); i++ {
 		if errs[i] != nil {
 			fmt.Printf("%d:%+v\n", i, errs[i])
 			continue
 		}
-		fmt.Printf("%d:%+v\n", i, rcs[i])
+		fmt.Printf("%d:%s:%+v\n", i, prefix[i], rcs[i])
 	}
 }

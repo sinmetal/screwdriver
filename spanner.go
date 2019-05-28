@@ -73,7 +73,7 @@ func (s *SpannerService) PartitionedDML(ctx context.Context, sql string) (int64,
 	return rowCount, nil
 }
 
-func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string, shards []int) ([]int64, []error) {
+func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string, shards []string) ([]int64, []error) {
 	defer func(n time.Time) {
 		d := time.Since(n)
 		fmt.Printf("ParallelPartitionedDML:Time: %v \n", d)
@@ -86,30 +86,30 @@ func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string,
 		i := i
 		shard := shard
 		wg.Add(1)
-		go func(i int, shard int) {
+		go func(i int, shard string) {
 			defer wg.Done()
 
-			//q := fmt.Sprintf(sql, shard)
-			//fmt.Println(q)
-			//stmt := spanner.Statement{
-			//	SQL: q,
-			//}
-			fmt.Printf("%s:%v\n", sql, shard)
+			q := fmt.Sprintf(sql, shard)
+			fmt.Println(q)
 			stmt := spanner.Statement{
-				SQL: sql,
-				Params: map[string]interface{}{
-					"Shard": shard,
-				},
+				SQL: q,
 			}
-			var rowCount int64
-			_, err := s.sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-				count, err := txn.Update(ctx, stmt)
-				if err != nil {
-					rowCount = count
-				}
-				return err
-			})
-			//rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
+			//fmt.Printf("%s:%v\n", sql, shard)
+			//stmt := spanner.Statement{
+			//	SQL: sql,
+			//	Params: map[string]interface{}{
+			//		"Shard": shard,
+			//	},
+			//}
+			//var rowCount int64
+			//_, err := s.sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			//	count, err := txn.Update(ctx, stmt)
+			//	if err != nil {
+			//		rowCount = count
+			//	}
+			//	return err
+			//})
+			rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
 			if err != nil {
 				errors[i] = err
 				return
@@ -130,10 +130,19 @@ func GenerateUUIDPrefix() []string {
 	for i := 0; i < 10; i++ {
 		runeList = append(runeList, fmt.Sprintf("%d", i))
 	}
-	for i := 0; i < 26; i++ {
+	for i := 0; i < 6; i++ {
 		r := rune('a' + i)
 		runeList = append(runeList, fmt.Sprintf("%v", string(r)))
 	}
 
-	return runeList
+	var resluts []string
+	for _, i := range runeList {
+		for _, j := range runeList {
+			for _, k := range runeList {
+				resluts = append(resluts, fmt.Sprintf("%s%s%s", i, j, k))
+			}
+		}
+	}
+
+	return resluts
 }
