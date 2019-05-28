@@ -73,36 +73,49 @@ func (s *SpannerService) PartitionedDML(ctx context.Context, sql string) (int64,
 	return rowCount, nil
 }
 
-func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string, ids []string) ([]int64, []error) {
+func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string, shards []int) ([]int64, []error) {
 	defer func(n time.Time) {
 		d := time.Since(n)
 		fmt.Printf("ParallelPartitionedDML:Time: %v \n", d)
 	}(time.Now())
 
-	rowCounts := make([]int64, len(ids))
-	errors := make([]error, len(ids))
+	rowCounts := make([]int64, len(shards))
+	errors := make([]error, len(shards))
 	wg := &sync.WaitGroup{}
-	for i, id := range ids {
+	for i, shard := range shards {
 		i := i
-		id := id
+		shard := shard
 		wg.Add(1)
-		go func(i int, id string) {
+		go func(i int, shard int) {
 			defer wg.Done()
 
-			fmt.Printf("%s : %s\n", sql, id)
+			//q := fmt.Sprintf(sql, shard)
+			//fmt.Println(q)
+			//stmt := spanner.Statement{
+			//	SQL: q,
+			//}
+			fmt.Printf("%s:%v\n", sql, shard)
 			stmt := spanner.Statement{
 				SQL: sql,
 				Params: map[string]interface{}{
-					"Id": id,
+					"Shard": shard,
 				},
 			}
-			rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
+			var rowCount int64
+			_, err := s.sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				count, err := txn.Update(ctx, stmt)
+				if err != nil {
+					rowCount = count
+				}
+				return err
+			})
+			//rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
 			if err != nil {
 				errors[i] = err
 				return
 			}
 			rowCounts[i] = rowCount
-		}(i, id)
+		}(i, shard)
 	}
 	wg.Wait()
 
