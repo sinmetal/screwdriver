@@ -19,20 +19,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	var sql string
 	// sql := "DELETE From Tweet WHERE Author = 'dia'"
 	// sql := "UPDATE TweetHashKey SET Sort = 1 WHERE Mod(UNIX_SECONDS(CreatedAt), 100) = %d"
 	// sql := "UPDATE TweetHashKey SET Sort = 1 WHERE Mod(UNIX_SECONDS(CreatedAt), 1000) = @Shard"
 
-	sql := `UPDATE Tweet SET Sort = 1 WHERE STARTS_WITH(Id, "%s")`
-	//sql := "SELECT 1 as Count"
-	parallelPartitionedDML(ctx, ss, sql)
+	//sql := `UPDATE Tweet SET Sort = 1 WHERE STARTS_WITH(Id, "%s")`
+	// fmt.Println(sql)
+	////sql := "SELECT 1 as Count"
+	//parallelPartitionedDML(ctx, ss, sql)
 
-	fmt.Println("----SIMPLE PARTITONED DML----")
-	sql = `UPDATE Tweet SET Sort = 2 WHERE Sort != 1`
-	partitionedDML(ctx, ss, sql)
-	fmt.Println(time.Now())
-	fmt.Println(sql)
+	{
+		fmt.Println("----SIMPLE PARTITIONED DML----")
+		sql = `UPDATE Tweet SET NewSimpleColumn = 5 WHERE NewSimpleColumn != 5 OR NewSimpleColumn IS NULL`
+		fmt.Println("Start:", time.Now())
+		fmt.Println(sql)
+		partitionedDML(ctx, ss, sql)
+		fmt.Println("End:", time.Now())
+	}
 	//ss.ExactStalenessQuery(ctx, sql)
 }
 

@@ -92,23 +92,8 @@ func (s *SpannerService) ParallelPartitionedDML(ctx context.Context, sql string,
 			q := fmt.Sprintf(sql, shard)
 			fmt.Println(q)
 			stmt := spanner.Statement{
-				SQL: q,
+				SQL: q, // TODO なぜかPartitionedUpdateだとParamsが無視されるので、SQL文に全部入れてる https://code-review.googlesource.com/c/gocloud/+/41450
 			}
-			//fmt.Printf("%s:%v\n", sql, shard)
-			//stmt := spanner.Statement{
-			//	SQL: sql,
-			//	Params: map[string]interface{}{
-			//		"Shard": shard,
-			//	},
-			//}
-			//var rowCount int64
-			//_, err := s.sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			//	count, err := txn.Update(ctx, stmt)
-			//	if err != nil {
-			//		rowCount = count
-			//	}
-			//	return err
-			//})
 			rowCount, err := s.sc.PartitionedUpdate(ctx, stmt)
 			if err != nil {
 				errors[i] = err
