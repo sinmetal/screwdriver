@@ -47,11 +47,7 @@ func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) {
 		if err != nil {
 			panic(err)
 		}
-		var count int64
-		if err := row.ColumnByName("Count", &count); err != nil {
-			panic(err)
-		}
-		fmt.Printf("Count:%d\n", count)
+		fmt.Printf("%+v\n", row.ColumnNames())
 	}
 	fmt.Printf("QueryPlan: %+v\n", iter.QueryPlan)
 	fmt.Printf("QueryStats: %+v\n", iter.QueryStats)
