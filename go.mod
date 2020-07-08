@@ -1,5 +1,7 @@
 module github.com/sinmetal/screwdriver
 
+go 1.14
+
 require (
 	cloud.google.com/go v0.51.0
 	cloud.google.com/go/spanner v1.1.0
