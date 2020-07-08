@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -46,21 +47,27 @@ func (s *BatchSpannerService) ExecuteQuery(ctx context.Context, sql string) erro
 	}
 	defer tx.Close()
 
-	iter := tx.QueryWithStats(ctx, spanner.Statement{
+	ps, err := tx.PartitionQuery(ctx, spanner.Statement{
 		SQL: sql,
-	})
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%+v\n", row.ColumnNames())
+	}, spanner.PartitionOptions{})
+	g, ctx := errgroup.WithContext(ctx)
+	for _, p := range ps {
+		g.Go(func() error {
+			iter := tx.Execute(ctx, p)
+			defer iter.Stop()
+			for {
+				row, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%+v\n", row.ColumnNames())
+			}
+			return nil
+		})
 	}
-	fmt.Printf("QueryPlan: %+v\n", iter.QueryPlan)
-	fmt.Printf("QueryStats: %+v\n", iter.QueryStats)
-	return nil
+
+	return g.Wait()
 }
