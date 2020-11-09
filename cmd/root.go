@@ -30,6 +30,7 @@ func init() {
 	cobra.OnInitialize()
 	ExecuteCmd.AddCommand(
 		executeStalenessSQLCmd(),
+		executeUpdateSQLCmd(),
 	)
 
 	RootCmd.AddCommand(
@@ -48,11 +49,11 @@ func init() {
 }
 
 func SpannerDatabase() (string, error) {
-	if projectID != "hogeproject" {
+	if projectID != "hogeproject" && len(projectID) > 0 {
 		return fmt.Sprintf("projects/%s/instances/%s/databases/%s", projectID, instance, database), nil
 	}
 
-	if len(spannerDatabase) < 1 {
+	if len(spannerDatabase) > 0 {
 		return spannerDatabase, nil
 	}
 

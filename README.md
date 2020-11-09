@@ -20,3 +20,18 @@ or Config を設定している場合
 ```
 go run . execute staleness --sql "SELECT 1"
 ```
+
+### staleness
+
+```
+go run . execute staleness --sql "SELECT 1"
+```
+
+### update
+
+```
+go run . execute update --sql "UPDATE Tweet SET Count = Count + 1, CommitedAt = PENDING_COMMIT_TIMESTAMP() WHERE Author = 'gold' AND CreatedAt > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 MINUTE);"
+
+# check
+SELECT * FROM Tweet WHERE Author = "gold" AND Count > 0 ORDER BY CreatedAt DESC LIMIT 100;
+```

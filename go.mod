@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.71.0 // indirect
 	cloud.google.com/go/spanner v1.11.0
 	github.com/gcpug/hake v0.0.4
+	github.com/google/uuid v1.1.2
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
