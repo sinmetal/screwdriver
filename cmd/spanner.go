@@ -1,11 +1,15 @@
-package main
+package cmd
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"os"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/gcpug/hake"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -33,24 +37,54 @@ func createSpannerClient(ctx context.Context, db string, o ...option.ClientOptio
 	return dataClient, nil
 }
 
-func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) {
+func (s *SpannerService) ExecuteUpdateDML(ctx context.Context, sql string) error {
 	fmt.Printf("Start Query : %s\n", sql)
+	fmt.Println("-------------------------------------------------------")
+
+	var rowCounts []int64
+	_, err := s.sc.ReadWriteTransaction(ctx, func(ctx context.Context, tx *spanner.ReadWriteTransaction) error {
+		var err error
+		rowCounts, err = tx.BatchUpdate(ctx, []spanner.Statement{
+			spanner.NewStatement(sql),
+			spanner.NewStatement(fmt.Sprintf("INSERT INTO OperationPITR (OperationPITRID, Comment, CommitedAt)\nVALUES (\"%s\", \"%s\", PENDING_COMMIT_TIMESTAMP());", uuid.New().String(), "update from screwdriver")),
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Update RowCount : %d\n", rowCounts[0])
+	return nil
+}
+
+func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) error {
+	fmt.Printf("Start Query : %s\n", sql)
+	fmt.Println("-------------------------------------------------------")
 	iter := s.sc.Single().WithTimestampBound(spanner.ExactStaleness(time.Second*15)).QueryWithStats(ctx, spanner.Statement{
 		SQL: sql,
 	})
 	defer iter.Stop()
+
+	csvw := csv.NewWriter(os.Stdout)
+	w := hake.NewWriter(csvw, true)
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			panic(err)
+			return err
 		}
-		fmt.Printf("%+v\n", row.ColumnNames())
+		if err := w.Write(row); err != nil {
+			return err
+		}
 	}
-	fmt.Printf("QueryPlan: %+v\n", iter.QueryPlan)
-	fmt.Printf("QueryStats: %+v\n", iter.QueryStats)
+	csvw.Flush()
+
+	return nil
 }
 
 func (s *SpannerService) PartitionedDML(ctx context.Context, sql string) (int64, error) {
