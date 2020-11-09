@@ -1,11 +1,14 @@
-package main
+package cmd
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"os"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/gcpug/hake"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -33,24 +36,31 @@ func createSpannerClient(ctx context.Context, db string, o ...option.ClientOptio
 	return dataClient, nil
 }
 
-func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) {
+func (s *SpannerService) ExactStalenessQuery(ctx context.Context, sql string) error {
 	fmt.Printf("Start Query : %s\n", sql)
+	fmt.Println("-------------------------------------------------------")
 	iter := s.sc.Single().WithTimestampBound(spanner.ExactStaleness(time.Second*15)).QueryWithStats(ctx, spanner.Statement{
 		SQL: sql,
 	})
 	defer iter.Stop()
+
+	csvw := csv.NewWriter(os.Stdout)
+	w := hake.NewWriter(csvw, true)
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			panic(err)
+			return err
 		}
-		fmt.Printf("%+v\n", row.ColumnNames())
+		if err := w.Write(row); err != nil {
+			return err
+		}
 	}
-	fmt.Printf("QueryPlan: %+v\n", iter.QueryPlan)
-	fmt.Printf("QueryStats: %+v\n", iter.QueryStats)
+	csvw.Flush()
+
+	return nil
 }
 
 func (s *SpannerService) PartitionedDML(ctx context.Context, sql string) (int64, error) {
